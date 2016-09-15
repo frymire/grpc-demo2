@@ -10,6 +10,9 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
 
 /** A sample gRPC server that serves the RouteGuide (see route_guide.proto) service. */
@@ -65,6 +68,7 @@ public class RouteGuideServer {
   public static class RouteGuideService extends RouteGuideGrpc.RouteGuideImplBase {
     
     private final Collection<Feature> features;
+    private final ConcurrentMap<Point, List<RouteNote>> routeNotes = new ConcurrentHashMap<Point, List<RouteNote>>();
     
     RouteGuideService(Collection<Feature> features) { this.features = features; }
 
@@ -144,7 +148,7 @@ public class RouteGuideServer {
      */
     @Override
     public StreamObserver<RouteNote> routeChat(final StreamObserver<RouteNote> responseObserver) {
-      return new RouteChatter(responseObserver, logger);
+      return new ServerChatter(responseObserver, logger, routeNotes);
     }
 
   } // class RouteGuideService

@@ -25,7 +25,7 @@ public class RouteGuideClient {
   private final RouteGuideBlockingStub blockingStub;
   private final RouteGuideStub asyncStub;
 
-  private static final Logger logger = Logger.getLogger(RouteGuideClient.class.getName());
+  private final Logger logger = Logger.getLogger(RouteGuideClient.class.getName());
 
   // Construct client for accessing RouteGuide server using the existing channel.
   public RouteGuideClient(ManagedChannelBuilder<?> channelBuilder) {
@@ -161,36 +161,17 @@ public class RouteGuideClient {
   public void routeChat() throws InterruptedException {
     
     info("\n\nChat with the server...");
-    
     final CountDownLatch finishLatch = new CountDownLatch(1);
     
-    StreamObserver<RouteNote> requestObserver = asyncStub.routeChat(
-        
-        new StreamObserver<RouteNote>() {
-          @Override public void onNext(RouteNote note) {
-            info("Got message \"{0}\" at {1}, {2}", note.getMessage(), 
-                note.getLocation().getLatitude(), note.getLocation().getLongitude());
-          }
-
-          @Override public void onError(Throwable t) {
-            logger.log(Level.WARNING, "RouteChat Failed: {0}", Status.fromThrowable(t));
-            finishLatch.countDown();
-          }
-
-          @Override public void onCompleted() {
-            info("Finished RouteChat");
-            finishLatch.countDown();
-          }
-        } );
+    // Provide a chatter to handle messages back from the server.
+    StreamObserver<RouteNote> requestObserver = asyncStub.routeChat(new ClientChatter(finishLatch, this));
 
     try {
       
       RouteNote[] requests = { newNote("First", 0, 0), newNote("Second", 0, 1), newNote("Third", 1, 0) };
-      
-      for (RouteNote request : requests) {
-        info("Sending message \"{0}\" at {1}, {2}", request.getMessage(), 
-            request.getLocation().getLatitude(), request.getLocation().getLongitude());
-        requestObserver.onNext(request);
+      for (RouteNote r: requests) {
+        info("Sending \"{0}\" at {1}, {2}", r.getMessage(), r.getLocation().getLatitude(), r.getLocation().getLongitude());
+        requestObserver.onNext(r);
       }
       
     } catch (RuntimeException e) {
@@ -198,13 +179,12 @@ public class RouteGuideClient {
       throw e;
     }
     
-    requestObserver.onCompleted(); // Mark the end of requests
+    // Tell the request observer that we're done sending messages, which counts finishLatch down to zero.
+    requestObserver.onCompleted();
     finishLatch.await(1, TimeUnit.MINUTES); // Receiving happens asynchronously
   }
 
-  private static void info(String msg, Object... params) {
-    logger.log(Level.INFO, msg, params);
-  }
+  public void info(String msg, Object... params) { logger.log(Level.INFO, msg, params); }
 
   private RouteNote newNote(String message, int lat, int lon) {
     Point p = Point.newBuilder().setLatitude(lat).setLongitude(lon).build();
