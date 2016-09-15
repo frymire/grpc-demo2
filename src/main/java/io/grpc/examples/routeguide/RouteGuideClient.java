@@ -97,36 +97,35 @@ public class RouteGuideClient {
     
     info("Record a route...");
     final CountDownLatch finishLatch = new CountDownLatch(1);
-    StreamObserver<RouteSummary> responseObserver = new RouteSummaryListener(this, logger, finishLatch);
     
-    // To talk to the server asynchronously, call the recordRoute method from the asynchronous
-    // server stub, then send your requests to the observer that it returns.
+    // Set up a client-side observer to handle responses from the server. Pass it to the 
+    // server stub to get a reference to the server-side request observer.
+    StreamObserver<RouteSummary> responseObserver = new RouteSummaryListener(this, logger, finishLatch);
     StreamObserver<Point> requestObserver = asynchServerStub.recordRoute(responseObserver);
-    try {      
 
-      // Send numPoints points randomly selected from the features list. Pause for a bit after each one.
+    // Send randomly selected from the features list to the request observer, pausing for a bit after each one.
+    try {
+      
       Random rand = new Random();
       for (int i = 0; i < numPoints; ++i) {
-        
         int index = rand.nextInt(features.size());
         Point point = features.get(index).getLocation();
         info("Visiting point {0}, {1}", RouteGuideUtil.getLatitude(point), RouteGuideUtil.getLongitude(point));
         requestObserver.onNext(point);
-        Thread.sleep(rand.nextInt(500) + 500);
+        Thread.sleep(rand.nextInt(250) + 250);
         
         // Any requests sent after RPC completed or throws an error would just be thrown away.
-        if (finishLatch.getCount() == 0) return;
-        
+        if (finishLatch.getCount() == 0) return;        
       }
       
     } catch (RuntimeException e) {
       requestObserver.onError(e); // Cancel RPC
       throw e;
     }
-    // Mark the end of requests
+    
+    // Mark the end of requests, and wait for a response. Once the responseObserver receives    
+    // a response, it will count down the finish latch and release this thread. 
     requestObserver.onCompleted();
-
-    // Receiving happens asynchronously
     finishLatch.await(1, TimeUnit.MINUTES);
   }
 
@@ -165,7 +164,6 @@ public class RouteGuideClient {
     return RouteNote.newBuilder().setMessage(message).setLocation(p).build();
   }
 
-  // Issues several different requests and then exit.
   public static void main(String[] args) throws InterruptedException, MalformedURLException, IOException {
     
     List<Feature> features = RouteGuideUtil.parseFeatures(RouteGuideUtil.getDefaultFeaturesFile());
