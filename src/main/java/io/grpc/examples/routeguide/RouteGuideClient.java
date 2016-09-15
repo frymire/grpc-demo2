@@ -22,16 +22,16 @@ import java.util.logging.Logger;
 public class RouteGuideClient {
   
   private final ManagedChannel channel;
-  private final RouteGuideBlockingStub blockingStub;
-  private final RouteGuideStub asyncStub;
+  private final RouteGuideBlockingStub blockingServerStub;
+  private final RouteGuideStub asynchServerStub;
 
   private final Logger logger = Logger.getLogger(RouteGuideClient.class.getName());
 
   // Construct client for accessing RouteGuide server at host:port.
   public RouteGuideClient(String host, int port) {
     channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext(true).build();
-    blockingStub = RouteGuideGrpc.newBlockingStub(channel);
-    asyncStub = RouteGuideGrpc.newStub(channel);
+    blockingServerStub = RouteGuideGrpc.newBlockingStub(channel);
+    asynchServerStub = RouteGuideGrpc.newStub(channel);
   }
 
   public void shutdown() throws InterruptedException {
@@ -43,31 +43,33 @@ public class RouteGuideClient {
     
     info("*** GetFeature: lat={0} lon={1}", lat, lon);
 
-    Point request = Point.newBuilder().setLatitude(lat).setLongitude(lon).build();
+    Point locationRequest = Point.newBuilder().setLatitude(lat).setLongitude(lon).build();
 
-    Feature feature;
+    Feature featureResponse;
     try {
-      feature = blockingStub.getFeature(request);
+      featureResponse = blockingServerStub.getFeature(locationRequest);
     } catch (StatusRuntimeException e) {
       logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
       return;
     }
     
-    if (RouteGuideUtil.exists(feature)) {
+    if (RouteGuideUtil.exists(featureResponse)) {
       info("Found feature called \"{0}\" at {1}, {2}",
-          feature.getName(),
-          RouteGuideUtil.getLatitude(feature.getLocation()),
-          RouteGuideUtil.getLongitude(feature.getLocation()));
+          featureResponse.getName(),
+          RouteGuideUtil.getLatitude(featureResponse.getLocation()),
+          RouteGuideUtil.getLongitude(featureResponse.getLocation()));
     } else {
       info("Found no feature at {0}, {1}",
-          RouteGuideUtil.getLatitude(feature.getLocation()),
-          RouteGuideUtil.getLongitude(feature.getLocation()));
+          RouteGuideUtil.getLatitude(featureResponse.getLocation()),
+          RouteGuideUtil.getLongitude(featureResponse.getLocation()));
     }
     
   }
 
-  // Blocking server-streaming example. Calls listFeatures with a rectangle of interest. 
-  // Prints each response feature as it arrives.
+  /** 
+   * Blocking server-streaming example. Requests all features within a rectangle  
+   * of interest from the server and prints each response as it arrives.
+   */
   public void listFeatures(int lowLat, int lowLon, int hiLat, int hiLon) {
     
     info("Get features in a rectangle...\nlowLat={0} lowLon={1} hiLat={2} hiLon={3}", lowLat, lowLon, hiLat, hiLon);
@@ -76,19 +78,16 @@ public class RouteGuideClient {
     Point highPoint = Point.newBuilder().setLatitude(hiLat).setLongitude(hiLon).build();
     Rectangle request = Rectangle.newBuilder().setLo(lowPoint).setHi(highPoint).build();
     
-    Iterator<Feature> features;
+    Iterator<Feature> featureResponses;
     try {
-      features = blockingStub.listFeatures(request);
+      featureResponses = blockingServerStub.listFeatures(request);
     } catch (StatusRuntimeException e) {
       logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
       return;
     }
 
     StringBuilder responseLog = new StringBuilder("Result: ");
-    while (features.hasNext()) {
-      Feature feature = features.next();
-      responseLog.append(feature);
-    }
+    while (featureResponses.hasNext()) responseLog.append(featureResponses.next());
     info(responseLog.toString());
   }
 
@@ -97,46 +96,26 @@ public class RouteGuideClient {
   public void recordRoute(List<Feature> features, int numPoints) throws InterruptedException {
     
     info("Record a route...");
-    
     final CountDownLatch finishLatch = new CountDownLatch(1);
+    StreamObserver<RouteSummary> responseObserver = new RouteSummaryListener(this, logger, finishLatch);
     
-    StreamObserver<RouteSummary> responseObserver = new StreamObserver<RouteSummary>() {
-      
-      @Override public void onNext(RouteSummary summary) {
-        info("Finished trip with {0} points. Passed {1} features. Travelled {2} meters. It took {3} seconds.", 
-            summary.getPointCount(), summary.getFeatureCount(), summary.getDistance(), summary.getElapsedTime());
-      }
+    // To talk to the server asynchronously, call the recordRoute method from the asynchronous
+    // server stub, then send your requests to the observer that it returns.
+    StreamObserver<Point> requestObserver = asynchServerStub.recordRoute(responseObserver);
+    try {      
 
-      @Override public void onError(Throwable t) {
-        Status status = Status.fromThrowable(t);
-        logger.log(Level.WARNING, "RecordRoute Failed: {0}", status);
-        finishLatch.countDown();
-      }
-
-      @Override public void onCompleted() {
-        info("Finished RecordRoute");
-        finishLatch.countDown();
-      }
-    };
-
-    StreamObserver<Point> requestObserver = asyncStub.recordRoute(responseObserver);
-    try {
-      
-      // Send numPoints points randomly selected from the features list.
+      // Send numPoints points randomly selected from the features list. Pause for a bit after each one.
       Random rand = new Random();
       for (int i = 0; i < numPoints; ++i) {
+        
         int index = rand.nextInt(features.size());
         Point point = features.get(index).getLocation();
         info("Visiting point {0}, {1}", RouteGuideUtil.getLatitude(point), RouteGuideUtil.getLongitude(point));
         requestObserver.onNext(point);
-        
-        // Sleep for a bit before sending the next one.
         Thread.sleep(rand.nextInt(500) + 500);
-        if (finishLatch.getCount() == 0) {
-          // RPC completed or errored before we finished sending.
-          // Sending further requests won't error, but they will just be thrown away.
-          return;
-        }
+        
+        // Any requests sent after RPC completed or throws an error would just be thrown away.
+        if (finishLatch.getCount() == 0) return;
         
       }
       
@@ -159,7 +138,7 @@ public class RouteGuideClient {
     final CountDownLatch finishLatch = new CountDownLatch(1);
     
     // Provide a chatter to handle messages back from the server.
-    StreamObserver<RouteNote> requestObserver = asyncStub.routeChat(new ClientChatter(finishLatch, this));
+    StreamObserver<RouteNote> requestObserver = asynchServerStub.routeChat(new ClientChatter(finishLatch, this));
 
     try {
       

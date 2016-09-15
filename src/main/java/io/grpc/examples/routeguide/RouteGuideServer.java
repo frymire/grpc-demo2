@@ -27,11 +27,6 @@ public class RouteGuideServer {
     server = ServerBuilder.forPort(port).addService(new RouteGuideService(features)).build();
   }
 
-//  /** Create a RouteGuide server listening on a given port, using a database in a specified feature file. */
-//  public RouteGuideServer(int port, URL featureFile) throws IOException {
-//    this(ServerBuilder.forPort(port), port, RouteGuideUtil.parseFeatures(featureFile));
-//  }
-
   public RouteGuideServer(int port) throws IOException {
     this(port, RouteGuideUtil.parseFeatures(RouteGuideUtil.getDefaultFeaturesFile()));
   }
@@ -134,7 +129,7 @@ public class RouteGuideServer {
      */
     @Override
     public StreamObserver<Point> recordRoute(final StreamObserver<RouteSummary> responseObserver) {
-      return new TripSummarizer(responseObserver, logger, this);
+      return new RouteSummarizer(responseObserver, logger, this);
     }
     
 

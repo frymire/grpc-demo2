@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 
 import io.grpc.stub.StreamObserver;
 
-public class TripSummarizer implements StreamObserver<Point> {
+public class RouteSummarizer implements StreamObserver<Point> {
   
   StreamObserver<RouteSummary> responseObserver;
   Logger logger;
@@ -26,7 +26,7 @@ public class TripSummarizer implements StreamObserver<Point> {
   Point previous;
   long startTime = System.nanoTime();
   
-  public TripSummarizer(StreamObserver<RouteSummary> responseObserver, Logger logger, RouteGuideServer.RouteGuideService rgs) { 
+  public RouteSummarizer(StreamObserver<RouteSummary> responseObserver, Logger logger, RouteGuideServer.RouteGuideService rgs) { 
     this.responseObserver = responseObserver;
     this.logger = logger;
     this.rgs = rgs;
@@ -39,8 +39,6 @@ public class TripSummarizer implements StreamObserver<Point> {
     if (previous != null) distance += calcDistance(previous, point);
     previous = point;
   }
-
-  @Override public void onError(Throwable t) { logger.log(Level.WARNING, "recordRoute cancelled"); }
 
   @Override public void onCompleted() {
 
@@ -57,6 +55,8 @@ public class TripSummarizer implements StreamObserver<Point> {
     responseObserver.onCompleted();
   }
   
+  @Override public void onError(Throwable t) { logger.log(Level.WARNING, "recordRoute cancelled"); }
+
   /**
    * Returns the distance between two points in meters, as computed using
    * "haversine" formula. See http://www.movable-type.co.uk/scripts/latlong.html.
