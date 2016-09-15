@@ -136,11 +136,14 @@ public class RouteGuideClient {
     info("\n\nChat with the server...");
     final CountDownLatch finishLatch = new CountDownLatch(1);
     
-    // Provide a chatter to handle messages back from the server.
-    StreamObserver<RouteNote> requestObserver = asynchServerStub.routeChat(new ClientChatter(finishLatch, this));
+    // Set up a client-side observer to handle responses from the server. Pass it to the 
+    // server stub to get a reference to the server-side request observer.
+    StreamObserver<RouteNote> responseObserver = new ClientChatter(finishLatch, this);
+    StreamObserver<RouteNote> requestObserver = asynchServerStub.routeChat(responseObserver);
 
     try {
       
+      // Send requests to the server.
       RouteNote[] requests = { newNote("First", 0, 0), newNote("Second", 0, 1), newNote("Third", 1, 0) };
       for (RouteNote r: requests) {
         info("Sending \"{0}\" at {1}, {2}", r.getMessage(), r.getLocation().getLatitude(), r.getLocation().getLongitude());
@@ -148,13 +151,14 @@ public class RouteGuideClient {
       }
       
     } catch (RuntimeException e) {
-      requestObserver.onError(e); // cancel RPC
+      requestObserver.onError(e);
       throw e;
     }
     
-    // Tell the request observer that we're done sending messages, which counts finishLatch down to zero.
+    // Mark the end of requests, and wait for a response. Once the responseObserver receives    
+    // a response, it will count down the finish latch and release this thread. 
     requestObserver.onCompleted();
-    finishLatch.await(1, TimeUnit.MINUTES); // Receiving happens asynchronously
+    finishLatch.await(1, TimeUnit.MINUTES);
   }
 
   public void info(String msg, Object... params) { logger.log(Level.INFO, msg, params); }
