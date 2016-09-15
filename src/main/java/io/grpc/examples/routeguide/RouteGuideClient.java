@@ -27,16 +27,11 @@ public class RouteGuideClient {
 
   private final Logger logger = Logger.getLogger(RouteGuideClient.class.getName());
 
-  // Construct client for accessing RouteGuide server using the existing channel.
-  public RouteGuideClient(ManagedChannelBuilder<?> channelBuilder) {
-    channel = channelBuilder.build();
-    blockingStub = RouteGuideGrpc.newBlockingStub(channel);
-    asyncStub = RouteGuideGrpc.newStub(channel);
-  }
-
   // Construct client for accessing RouteGuide server at host:port.
   public RouteGuideClient(String host, int port) {
-    this(ManagedChannelBuilder.forAddress(host, port).usePlaintext(true));
+    channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext(true).build();
+    blockingStub = RouteGuideGrpc.newBlockingStub(channel);
+    asyncStub = RouteGuideGrpc.newStub(channel);
   }
 
   public void shutdown() throws InterruptedException {
@@ -136,7 +131,7 @@ public class RouteGuideClient {
         requestObserver.onNext(point);
         
         // Sleep for a bit before sending the next one.
-        Thread.sleep(rand.nextInt(1000) + 500);
+        Thread.sleep(rand.nextInt(500) + 500);
         if (finishLatch.getCount() == 0) {
           // RPC completed or errored before we finished sending.
           // Sending further requests won't error, but they will just be thrown away.

@@ -8,7 +8,6 @@ import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
-import java.net.URL;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,18 +22,18 @@ public class RouteGuideServer {
   private final Server server;
 
   /** Create a RouteGuide server using serverBuilder as a base and features as data. */
-  public RouteGuideServer(ServerBuilder<?> serverBuilder, int port, Collection<Feature> features) {
+  public RouteGuideServer(int port, Collection<Feature> features) {
     this.port = port;
-    server = serverBuilder.addService(new RouteGuideService(features)).build();
+    server = ServerBuilder.forPort(port).addService(new RouteGuideService(features)).build();
   }
 
-  /** Create a RouteGuide server listening on a given port, using a database in a specified feature file. */
-  public RouteGuideServer(int port, URL featureFile) throws IOException {
-    this(ServerBuilder.forPort(port), port, RouteGuideUtil.parseFeatures(featureFile));
-  }
+//  /** Create a RouteGuide server listening on a given port, using a database in a specified feature file. */
+//  public RouteGuideServer(int port, URL featureFile) throws IOException {
+//    this(ServerBuilder.forPort(port), port, RouteGuideUtil.parseFeatures(featureFile));
+//  }
 
   public RouteGuideServer(int port) throws IOException {
-    this(port, RouteGuideUtil.getDefaultFeaturesFile());
+    this(port, RouteGuideUtil.parseFeatures(RouteGuideUtil.getDefaultFeaturesFile()));
   }
 
   /** Start serving requests. */
