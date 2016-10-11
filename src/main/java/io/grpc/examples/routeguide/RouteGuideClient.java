@@ -2,7 +2,6 @@ package io.grpc.examples.routeguide;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.routeguide.RouteGuideGrpc.RouteGuideBlockingStub;
 import io.grpc.examples.routeguide.RouteGuideGrpc.RouteGuideStub;
