@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>us.dac</groupId>
@@ -7,6 +8,7 @@
   <name>GRPC Demo 2</name>
 
   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <grpc.version>1.0.0-pre2</grpc.version><!-- CURRENT_GRPC_VERSION -->
   </properties>
 
@@ -34,6 +36,18 @@
 
   <build>
 
+    <resources>
+      <resource>
+        <directory>${basedir}/src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>${project.build.directory}/generated-resources/protobuf/grpc-java</directory>
+      </resource>
+      <resource>
+        <directory>${project.build.directory}/generated-resources/protobuf/java</directory>
+      </resource>
+    </resources>
+
     <extensions>
       <extension>
         <groupId>kr.motd.maven</groupId>
@@ -58,11 +72,9 @@
         <artifactId>protobuf-maven-plugin</artifactId>
         <version>0.5.0</version>
         <configuration>
-          <!--
-            The version of protoc must match protobuf-java. If you don't depend on
-            protobuf-java directly, you will be transitively depending on the
-            protobuf-java version that grpc depends on.
-          -->
+          <!-- The version of protoc must match protobuf-java. If you don't 
+            depend on protobuf-java directly, you will be transitively depending on the 
+            protobuf-java version that grpc depends on. -->
           <protocArtifact>com.google.protobuf:protoc:3.0.0:exe:${os.detected.classifier}</protocArtifact>
           <pluginId>grpc-java</pluginId>
           <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
