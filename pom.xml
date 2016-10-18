@@ -9,7 +9,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <grpc.version>1.0.0-pre2</grpc.version><!-- CURRENT_GRPC_VERSION -->
+    <grpc.version>1.0.0-pre2</grpc.version>
   </properties>
 
   <dependencies>
@@ -38,9 +38,6 @@
 
     <resources>
       <resource>
-        <directory>${basedir}/src/main/resources</directory>
-      </resource>
-      <resource>
         <directory>${project.build.directory}/generated-resources/protobuf/grpc-java</directory>
       </resource>
       <resource>
@@ -48,6 +45,7 @@
       </resource>
     </resources>
 
+    <!-- Gets ${os.detected.classifier} for the protobuf-maven-plugin below. -->
     <extensions>
       <extension>
         <groupId>kr.motd.maven</groupId>
@@ -72,16 +70,14 @@
         <artifactId>protobuf-maven-plugin</artifactId>
         <version>0.5.0</version>
         <configuration>
-          <!-- The version of protoc must match protobuf-java. If you don't 
-            depend on protobuf-java directly, you will be transitively depending on the 
-            protobuf-java version that grpc depends on. -->
-          <protocArtifact>com.google.protobuf:protoc:3.0.0:exe:${os.detected.classifier}</protocArtifact>
+          <!-- These are parameters for the compile-custom goal. -->
           <pluginId>grpc-java</pluginId>
           <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
         </configuration>
         <executions>
           <execution>
             <goals>
+              <!-- The first goal compiles .proto files to Java source, while the second calls protoc again to generate grpc. -->
               <goal>compile</goal>
               <goal>compile-custom</goal>
             </goals>
