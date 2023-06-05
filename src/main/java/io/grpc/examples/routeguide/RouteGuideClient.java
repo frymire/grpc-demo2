@@ -8,7 +8,6 @@ import io.grpc.examples.routeguide.RouteGuideGrpc.RouteGuideStub;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -28,7 +27,7 @@ public class RouteGuideClient {
 
   // Construct client for accessing RouteGuide server at host:port.
   public RouteGuideClient(String host, int port) {
-    channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext(true).build();
+    channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
     blockingServerStub = RouteGuideGrpc.newBlockingStub(channel);
     asynchServerStub = RouteGuideGrpc.newStub(channel);
   }
@@ -143,9 +142,13 @@ public class RouteGuideClient {
     try {
       
       // Send requests to the server.
-      RouteNote[] requests = { newNote("First", 0, 0), newNote("Second", 0, 1), newNote("Third", 1, 0) };
+      RouteNote[] requests = {
+              newNote("First", 0, 0),
+              newNote("Second", 0, 1),
+              newNote("Third", 1, 0) };
       for (RouteNote r: requests) {
-        info("Sending \"{0}\" at {1}, {2}", r.getMessage(), r.getLocation().getLatitude(), r.getLocation().getLongitude());
+        info("Sending \"{0}\" at {1}, {2}",
+                r.getMessage(), r.getLocation().getLatitude(), r.getLocation().getLongitude());
         requestObserver.onNext(r);
       }
       
@@ -167,7 +170,7 @@ public class RouteGuideClient {
     return RouteNote.newBuilder().setMessage(message).setLocation(p).build();
   }
 
-  public static void main(String[] args) throws InterruptedException, MalformedURLException, IOException {
+  public static void main(String[] args) throws InterruptedException, IOException {
     
     List<Feature> features = RouteGuideUtil.parseFeatures(RouteGuideUtil.getDefaultFeaturesFile());
     RouteGuideClient client = new RouteGuideClient("localhost", 8980);

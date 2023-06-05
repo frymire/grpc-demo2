@@ -26,7 +26,10 @@ public class RouteSummarizer implements StreamObserver<Point> {
   Point previous;
   long startTime = System.nanoTime();
   
-  public RouteSummarizer(StreamObserver<RouteSummary> responseObserver, Logger logger, RouteGuideServer.RouteGuideService rgs) { 
+  public RouteSummarizer(
+          StreamObserver<RouteSummary> responseObserver,
+          Logger logger,
+          RouteGuideServer.RouteGuideService rgs) {
     this.responseObserver = responseObserver;
     this.logger = logger;
     this.rgs = rgs;

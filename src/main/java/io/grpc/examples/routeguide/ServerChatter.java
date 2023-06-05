@@ -14,8 +14,8 @@ import io.grpc.stub.StreamObserver;
 
 public class ServerChatter implements StreamObserver<RouteNote> {
   
-  private StreamObserver<RouteNote> responseObserver;
-  private Logger logger;
+  private final StreamObserver<RouteNote> responseObserver;
+  private final Logger logger;
   private final ConcurrentMap<Point, List<RouteNote>> routeNotes;
   
   public ServerChatter(
@@ -36,7 +36,7 @@ public class ServerChatter implements StreamObserver<RouteNote> {
 
   /** Get the notes list for the given location. If missing, create it. */
   private List<RouteNote> getNotesForLocation(Point location) {
-    List<RouteNote> notes = Collections.synchronizedList(new ArrayList<RouteNote>());
+    List<RouteNote> notes = Collections.synchronizedList(new ArrayList<>());
     List<RouteNote> prevNotes = routeNotes.putIfAbsent(location, notes);
     return prevNotes != null ? prevNotes : notes;
   }

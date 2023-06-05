@@ -37,14 +37,12 @@ public class RouteGuideServer {
     server.start();
     logger.info("Server started, listening on " + port);
 
-    Runtime.getRuntime().addShutdownHook(new Thread() {
-      @Override public void run() {
-        // Use stderr here since the logger may have been reset by its JVM shutdown hook.
-        System.err.println("*** shutting down gRPC server since JVM is shutting down");
-        RouteGuideServer.this.stop();
-        System.err.println("*** server shut down");
-      }
-    });
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      // Use stderr here since the logger may have been reset by its JVM shutdown hook.
+      System.err.println("*** shutting down gRPC server since JVM is shutting down");
+      RouteGuideServer.this.stop();
+      System.err.println("*** server shut down");
+    }));
 
   }
 
@@ -62,7 +60,7 @@ public class RouteGuideServer {
   public static class RouteGuideService extends RouteGuideGrpc.RouteGuideImplBase {
     
     private final Collection<Feature> features;
-    private final ConcurrentMap<Point, List<RouteNote>> routeNotes = new ConcurrentHashMap<Point, List<RouteNote>>();
+    private final ConcurrentMap<Point, List<RouteNote>> routeNotes = new ConcurrentHashMap<>();
     
     RouteGuideService(Collection<Feature> features) { this.features = features; }
 
